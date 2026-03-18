@@ -1,0 +1,19 @@
+# Local planning and scratch
+.local/
+notes/
+
+# Local environments and caches
+.venv/
+__pycache__/
+.ipynb_checkpoints/
+*.pyc
+
+# Training artifacts that should not go to the remote
+checkpoints/
+runs/
+wandb/
+data/
+datasets/
+
+# OS files
+.DS_Store
