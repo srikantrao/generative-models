@@ -1,7 +1,7 @@
 # Local planning and scratch
 .local/
 notes/
-
+results/
 # Local environments and caches
 .venv/
 __pycache__/
