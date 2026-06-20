@@ -17,3 +17,6 @@ datasets/
 
 # OS files
 .DS_Store
+
+# Specification folder 
+specs
