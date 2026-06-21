@@ -1,10 +1,13 @@
 [project]
-name = "generative-models-lab"
+name = "generative-models"
 version = "0.1.0"
-description = "Add your description here"
+description = "Implementations of diffusion, flow matching, and guided generative models."
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "numpy>=2.4.3",
+    "torch>=2.10.0",
+]
 
 [dependency-groups]
 dev = [

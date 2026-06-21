@@ -1,5 +1,6 @@
-from generative_models_lab.seeds import seed_everything
-from generative_models_lab.experiments.results import ExperimentResult
+from generative_models.experiments.results import ExperimentResult
+from generative_models.seeds import seed_everything
+
 
 def main() -> None:
     seed_everything(7)

@@ -1,5 +1,5 @@
 def main():
-    print("Hello from generative-models-lab!")
+    print("Hello from generative-models!")
 
 
 if __name__ == "__main__":
