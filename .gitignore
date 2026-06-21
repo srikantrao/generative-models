@@ -1,22 +1,25 @@
-# Local planning and scratch
+# Local planning and private specs
 .local/
 notes/
-results/
+specs/
+
 # Local environments and caches
 .venv/
+.ruff_cache/
 __pycache__/
+**/__pycache__/
 .ipynb_checkpoints/
 *.pyc
 
 # Training artifacts that should not go to the remote
-checkpoints/
-runs/
-wandb/
-data/
-datasets/
+/checkpoints/
+/runs/
+/wandb/
+/data/
+/datasets/
+/figures/
+/results/
+/blog/
 
 # OS files
 .DS_Store
-
-# Specification folder 
-specs

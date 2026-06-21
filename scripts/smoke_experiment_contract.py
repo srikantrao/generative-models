@@ -24,7 +24,7 @@ def main() -> None:
         ],
     )
 
-    result.save_json("results/smoke_test/result.json")
+    result.save_json("runs/smoke_test/result.json")
 
 
 if __name__ == "__main__":
