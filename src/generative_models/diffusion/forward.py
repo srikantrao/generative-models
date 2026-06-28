@@ -88,7 +88,7 @@ def q_sample(
     else:
         if noise.shape != x0.shape:
             raise ValueError(
-                f"noise must have shape {tuple(x0.shape)}, got {tuple(noise.shape})"
+                f"noise must have shape {tuple(x0.shape)}, got {tuple(noise.shape)}"
             )
         if noise.device != x0.device:
             raise ValueError("noise must be on the same device as x0")
@@ -100,3 +100,10 @@ def q_sample(
         timesteps,
         x0.shape,
     ).to(dtype=x0.dtype)
+
+    sqrt_one_minus_alpha_bars = extract_schedule_values(
+        schedule.sqrt_one_minus_alpha_bars, timesteps, x0.shape
+    )
+
+    xt = sqrt_alpha_bars * x0 + sqrt_one_minus_alpha_bars * noise
+    return ForwardProcessSample(xt=xt, noise=noise, timesteps=timesteps)
