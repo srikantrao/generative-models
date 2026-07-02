@@ -1,6 +1,5 @@
 import matplotlib.pyplot as plt
 import torch
-from torch._inductor.ir import NoneLayout
 
 from generative_models.data.toy import sample_labeled_gaussian_mixture
 from generative_models.diffusion.forward import q_sample
