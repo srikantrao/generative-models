@@ -15,7 +15,7 @@ from generative_models.viz.points import save_figure, use_clean_style
 
 def load_config(path: Path) -> ToyDDPMTrainingConfig:
     raw_config = yaml.safe_load(path.read_text()) or {}
-    return ToyDDPMTrainingConfig(**raw_config)
+    return ToyDDPMTrainingConfig.from_mapping(raw_config)
 
 
 def save_loss_plot(losses: list[float], path: Path) -> Path:

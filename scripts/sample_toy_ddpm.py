@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import argparse
+from collections.abc import Mapping
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import torch
 
-from generative_models.data.toy import sample_labeled_gaussian_mixture
+from generative_models.data.toy import ToyBatch,sample_labeled_gaussian_mixture
 from generative_models.diffusion.samplers import sample_ddpm
 from generative_models.diffusion.schedules import (
     build_diffusion_schedule,
@@ -45,7 +46,13 @@ def load_model_from_checkpoint(
     device: torch.device,
 ) -> tuple[TimeConditionedMLPDenoiser, ToyDDPMTrainingConfig]:
     checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=True)
-    config = ToyDDPMTrainingConfig(**checkpoint["config"])
+
+    if not isinstance(checkpoint, Mapping):
+        raise ValueError("checkpoint must contain a mapping")
+
+    config = checkpoint.get("config")
+    config = ToyDDPMTrainingConfig.from_mapping(config)
+
     model = TimeConditionedMLPDenoiser(
         data_dim=2,
         time_embedding_dim=config.time_embedding_dim,
@@ -56,6 +63,22 @@ def load_model_from_checkpoint(
     model.eval()
     return model, config
 
+def sample_reference_data(
+    config: ToyDDPMTrainingConfig,
+    *,
+    num_samples: int,
+    device: torch.device,
+    generator: torch.Generator,
+) -> ToyBatch:
+    centers, class_probs = config.data_spec.to_tensors(device=device)
+    return sample_labeled_gaussian_mixture(
+        num_samples,
+        centers=centers,
+        class_probs=class_probs,
+        std=config.data_spec.std,
+        device=device,
+        generator=generator
+    )
 
 def main() -> None:
     args = parse_args()
@@ -81,10 +104,11 @@ def main() -> None:
     )
 
     data_generator = torch.Generator(device=device).manual_seed(args.seed)
-    real_batch = sample_labeled_gaussian_mixture(
-        args.num_samples,
-        generator=data_generator,
+    real_batch = sample_reference_data(
+        config,
+        num_samples=args.num_samples,
         device=device,
+        generator=data_generator
     )
 
     use_clean_style()
@@ -94,7 +118,7 @@ def main() -> None:
         real_batch.x,
         labels=real_batch.y,
         title="Real Toy Data",
-        class_names=["mode 0", "mode 1", "mode 2"],
+        class_names=[f"mode {index}" for index in range(len(config.data_spec.centers))],
         point_size=10.0,
         alpha=0.6,
     )

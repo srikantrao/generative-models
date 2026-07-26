@@ -1,10 +1,17 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
+from typing import Self
+
 
 import torch
 
-from generative_models.data.toy import sample_labeled_gaussian_mixture
+from generative_models.data.toy import (
+    DEFAULT_TOY_GAUSSIAN_MIXTURE_SPEC,
+    ToyGaussianMixtureSpec,
+    sample_labeled_gaussian_mixture,
+)
 from generative_models.flow_matching.objectives import flow_matching_loss
 from generative_models.models.flow_mlp import TimeConditionedMLPVectorField
 
@@ -17,6 +24,21 @@ class ToyFlowMatchingTrainingConfig:
     time_embedding_dim: int = 64
     num_hidden_layers: int = 2
     seed: int = 42
+    data_spec: ToyGaussianMixtureSpec = DEFAULT_TOY_GAUSSIAN_MIXTURE_SPEC
+
+    @classmethod
+    def from_mapping(cls, values: Mapping[str, object]) -> Self:
+        raw_config = dict(values)
+        raw_data_spec = raw_config["data_spec"]
+        raw_config["data_spec"] = ToyGaussianMixtureSpec.from_mapping(raw_data_spec)
+
+        try:
+            config = cls(**raw_config)
+        except TypeError as error:
+            raise ValueError(f"invalid training config fields: {error}") from error
+
+        config.validate()
+        return config
 
     def validate(self) -> None:
         if self.num_steps <= 0:
@@ -50,6 +72,7 @@ def train_toy_flow_matching(
     torch.manual_seed(config.seed)
     generator = torch.Generator(device=train_device).manual_seed(config.seed)
 
+    centers, class_probs = config.data_spec.to_tensors(device=train_device)
     model = TimeConditionedMLPVectorField(
         data_dim=2,
         time_embedding_dim=config.time_embedding_dim,
@@ -62,7 +85,12 @@ def train_toy_flow_matching(
 
     for _ in range(config.num_steps):
         batch = sample_labeled_gaussian_mixture(
-            config.batch_size, generator=generator, device=train_device
+            config.batch_size,
+            centers=centers,
+            class_probs=class_probs,
+            std=config.data_spec.std
+            generator=generator,
+            device=train_device
         )
         optimizer.zero_grad(set_to_none=True)
         loss_output = flow_matching_loss(model, batch.x, generator=generator)

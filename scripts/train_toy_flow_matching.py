@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from collections.abc import Mapping
 from dataclasses import asdict
 from pathlib import Path
 
@@ -16,8 +17,8 @@ from generative_models.training.toy_flow_matching import (
 from generative_models.viz.points import save_figure, use_clean_style
 
 def load_config(path: Path) -> ToyFlowMatchingTrainingConfig:
-    raw_config = yaml.safe_load(path.read_text())
-    return ToyFlowMatchingTrainingConfig(**raw_config)
+    raw_config: Mapping[str, object] = yaml.safe_load(path.read_text())
+    return ToyFlowMatchingTrainingConfig.from_mapping(raw_config)
 
 def save_loss_plot(losses: list[float], path: Path) -> Path:
     use_clean_style()
