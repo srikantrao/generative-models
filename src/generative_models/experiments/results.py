@@ -4,6 +4,7 @@ from pathlib import Path
 import json
 from typing import Any
 
+
 @dataclass(frozen=True)
 class ExperimentResult:
     name: str
@@ -13,7 +14,9 @@ class ExperimentResult:
     artifacts: list[str] = field(default_factory=list)
     failure_notes: list[str] = field(default_factory=list)
     seed: int = 0
-    created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    created_at: str = field(
+        default_factory=lambda: datetime.now(timezone.utc).isoformat()
+    )
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

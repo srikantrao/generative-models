@@ -5,6 +5,7 @@ from dataclasses import dataclass
 import torch
 from torch import Tensor
 
+
 @dataclass(frozen=True)
 class LinearFlowMatchingSample:
     xt: Tensor
@@ -12,6 +13,7 @@ class LinearFlowMatchingSample:
     source_noise: Tensor
     data: Tensor
     target_velocity: Tensor
+
 
 def sample_times(
     batch_size: int,
@@ -24,17 +26,10 @@ def sample_times(
         raise ValueError("batch_size must be positive")
     if not dtype.is_floating_point:
         raise ValueError("dtype must be floating")
-    return torch.rand(
-        batch_size,
-        dtype=dtype,
-        device=device,
-        generator=generator
-    )
+    return torch.rand(batch_size, dtype=dtype, device=device, generator=generator)
 
-def expand_times(
-    times: Tensor,
-    target_shape: torch.Size | tuple[int,...]
-) -> Tensor:
+
+def expand_times(times: Tensor, target_shape: torch.Size | tuple[int, ...]) -> Tensor:
 
     if times.ndim != 1:
         raise ValueError(f"times must have shape [batch], got {tuple(times.shape)}")
@@ -50,8 +45,9 @@ def expand_times(
     if torch.any(times < 0) or torch.any(times > 1):
         raise ValueError("times must be in [0, 1]")
 
-    broadcast_shape = (times.shape[0], ) + (1, ) * (len(target_shape)-1)
+    broadcast_shape = (times.shape[0],) + (1,) * (len(target_shape) - 1)
     return times.reshape(broadcast_shape)
+
 
 def sample_linear_flow_path(
     data: Tensor,
@@ -65,10 +61,7 @@ def sample_linear_flow_path(
 
     if times is None:
         times = sample_times(
-            data.shape[0],
-            generator=generator,
-            device = data.device,
-            dtype = data.dtype
+            data.shape[0], generator=generator, device=data.device, dtype=data.dtype
         )
     else:
         times = times.to(device=data.device)
@@ -92,12 +85,12 @@ def sample_linear_flow_path(
 
     expanded_times = expand_times(times, data.shape).to(dtype=data.dtype)
     xt = (1.0 - expanded_times) * source_noise + expanded_times * data
-    target_velocity = data - source_noise # analytical derivative
+    target_velocity = data - source_noise  # analytical derivative
 
     return LinearFlowMatchingSample(
         xt=xt,
         times=times,
         source_noise=source_noise,
         data=data,
-        target_velocity=target_velocity
+        target_velocity=target_velocity,
     )

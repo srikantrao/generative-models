@@ -5,6 +5,7 @@ from torch import Tensor, nn
 
 from generative_models.models.continuous_time import ContinuousTimeEmbedding
 
+
 class TimeConditionedMLPVectorField(nn.Module):
     def __init__(
         self,
@@ -12,7 +13,7 @@ class TimeConditionedMLPVectorField(nn.Module):
         data_dim: int = 2,
         time_embedding_dim: int = 64,
         hidden_dim: int = 128,
-        num_hidden_layers: int = 2
+        num_hidden_layers: int = 2,
     ) -> None:
         super().__init__()
         if data_dim <= 0:

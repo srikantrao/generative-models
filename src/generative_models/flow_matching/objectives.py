@@ -20,7 +20,9 @@ class FlowMatchingLoss:
     source_noise: Tensor
     data: Tensor
 
+
 VelocityPredictor = Callable[[Tensor, Tensor], Tensor]
+
 
 def flow_matching_loss(
     model: VelocityPredictor,
@@ -32,10 +34,7 @@ def flow_matching_loss(
 ) -> FlowMatchingLoss:
 
     path_sample = sample_linear_flow_path(
-        data,
-        times=times,
-        source_noise=source_noise,
-        generator=generator
+        data, times=times, source_noise=source_noise, generator=generator
     )
 
     predicted_velocity = model(path_sample.xt, path_sample.times)

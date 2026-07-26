@@ -10,11 +10,13 @@ from generative_models.flow_matching.objectives import VelocityPredictor
 
 ODESolver = Literal["euler", "heun"]
 
+
 @dataclass(frozen=True)
 class FlowODESample:
     samples: Tensor
     times: Tensor
     trajectory: Tensor | None
+
 
 def _validate_state_and_times(state: Tensor, times: Tensor) -> None:
     if state.ndim < 2:
@@ -24,13 +26,16 @@ def _validate_state_and_times(state: Tensor, times: Tensor) -> None:
     if times.ndim != 1:
         raise ValueError(f"times must have shape [batch], got {tuple(times.shape)}")
     if times.shape[0] != state.shape[0]:
-        raise ValueError(f"times batch size {times.shape[0]} does not match state batch size {state.shape[0]}")
+        raise ValueError(
+            f"times batch size {times.shape[0]} does not match state batch size {state.shape[0]}"
+        )
     if not torch.is_floating_point(times):
         raise ValueError("times must be floating point")
     if times.device != state.device:
         raise ValueError("times must be on the same device as state")
     if torch.any(times < 0) or torch.any(times > 1):
         raise ValueError("times must be in [0, 1]")
+
 
 def _validate_velocity(velocity: Tensor, state: Tensor) -> None:
     if velocity.shape != state.shape:
@@ -43,10 +48,9 @@ def _validate_velocity(velocity: Tensor, state: Tensor) -> None:
     if velocity.dtype != state.dtype:
         raise ValueError("velocity must have the same dtype as state")
 
+
 def _expand_step_size(
-    times: Tensor,
-    next_times: Tensor,
-    target_shape: torch.Size | tuple[int, ...]
+    times: Tensor, next_times: Tensor, target_shape: torch.Size | tuple[int, ...]
 ) -> Tensor:
     if next_times.shape != times.shape:
         raise ValueError("next_times must have the same shape as times")
@@ -63,6 +67,7 @@ def _expand_step_size(
     broadcast_shape = (times.shape[0],) + (1,) * (len(target_shape) - 1)
     return step_sizes.reshape(broadcast_shape)
 
+
 def euler_step(
     model: VelocityPredictor,
     state: Tensor,
@@ -75,6 +80,7 @@ def euler_step(
     velocity = model(state, times)
     _validate_velocity(velocity, state)
     return state + step_sizes * velocity
+
 
 def heun_step(
     model: VelocityPredictor,
@@ -94,6 +100,7 @@ def heun_step(
 
     average_velocity = (initial_velocity + final_velocity) / 2
     return state + step_sizes * average_velocity
+
 
 @torch.no_grad()
 def sample_flow_ode(
@@ -123,7 +130,7 @@ def sample_flow_ode(
 
     # Start with Noise
     state = torch.randn(
-        (num_samples, ) + (sample_shape),
+        (num_samples,) + (sample_shape),
         generator=generator,
         device=device,
         dtype=dtype,
@@ -131,11 +138,7 @@ def sample_flow_ode(
 
     # Time steps
     time_grid = torch.linspace(
-        0.0,
-        1.0,
-        num_steps + 1,
-        device=sample_device,
-        dtype=dtype
+        0.0, 1.0, num_steps + 1, device=sample_device, dtype=dtype
     )
 
     # Starting point if you want to record the trajectory
@@ -148,7 +151,9 @@ def sample_flow_ode(
     step_function = euler_step if solver == "euler" else heun_step
 
     for step_index in range(num_steps):
-        times = time_grid[step_index].expand(num_samples) # repeat the same value across the batch dimension.
+        times = time_grid[step_index].expand(
+            num_samples
+        )  # repeat the same value across the batch dimension.
         next_times = time_grid[step_index + 1].expand(num_samples)
         state = step_function(model, state, times, next_times)
 
@@ -158,5 +163,5 @@ def sample_flow_ode(
     return FlowODESample(
         samples=state,
         times=time_grid.detach().cpu(),
-        trajectory=torch.stack(trajectory) if trajectory is not None else None
+        trajectory=torch.stack(trajectory) if trajectory is not None else None,
     )

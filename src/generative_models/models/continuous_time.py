@@ -5,6 +5,7 @@ import math
 import torch
 from torch import Tensor, nn
 
+
 class ContinuousTimeEmbedding(nn.Module):
     def __init__(self, embedding_dim: int, *, max_period: float = 10_000.0) -> None:
         super().__init__()
