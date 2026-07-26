@@ -4,7 +4,6 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Self
 
-
 import torch
 
 from generative_models.data.toy import (
@@ -14,6 +13,7 @@ from generative_models.data.toy import (
 )
 from generative_models.flow_matching.objectives import flow_matching_loss
 from generative_models.models.flow_mlp import TimeConditionedMLPVectorField
+
 
 @dataclass(frozen=True)
 class ToyFlowMatchingTrainingConfig:
@@ -28,8 +28,18 @@ class ToyFlowMatchingTrainingConfig:
 
     @classmethod
     def from_mapping(cls, values: Mapping[str, object]) -> Self:
+        if not isinstance(values, Mapping):
+            raise ValueError("training config must be a mapping")
+        if not all(isinstance(key, str) for key in values):
+            raise ValueError("training config keys must be strings")
+
         raw_config = dict(values)
+        if "data_spec" not in raw_config:
+            raise ValueError("training config is missing required key: data_spec")
+
         raw_data_spec = raw_config["data_spec"]
+        if not isinstance(raw_data_spec, Mapping):
+            raise ValueError("data_spec must be a mapping")
         raw_config["data_spec"] = ToyGaussianMixtureSpec.from_mapping(raw_data_spec)
 
         try:
@@ -41,6 +51,7 @@ class ToyFlowMatchingTrainingConfig:
         return config
 
     def validate(self) -> None:
+        self.data_spec.validate()
         if self.num_steps <= 0:
             raise ValueError("num_steps must be positive")
         if self.batch_size <= 0:
@@ -54,18 +65,19 @@ class ToyFlowMatchingTrainingConfig:
         if self.num_hidden_layers <= 0:
             raise ValueError("num_hidden_layers must be positive")
 
+
 @dataclass
 class ToyFlowMatchingTrainingResult:
     config: ToyFlowMatchingTrainingConfig
     model: TimeConditionedMLPVectorField
     losses: list[float]
 
+
 def train_toy_flow_matching(
     config: ToyFlowMatchingTrainingConfig,
     *,
     device: torch.device | str = "cpu",
 ) -> ToyFlowMatchingTrainingResult:
-
     config.validate()
 
     train_device = torch.device(device)
@@ -88,9 +100,9 @@ def train_toy_flow_matching(
             config.batch_size,
             centers=centers,
             class_probs=class_probs,
-            std=config.data_spec.std
+            std=config.data_spec.std,
             generator=generator,
-            device=train_device
+            device=train_device,
         )
         optimizer.zero_grad(set_to_none=True)
         loss_output = flow_matching_loss(model, batch.x, generator=generator)

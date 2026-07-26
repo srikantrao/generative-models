@@ -7,7 +7,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import torch
 
-from generative_models.data.toy import ToyBatch,sample_labeled_gaussian_mixture
+from generative_models.data.toy import ToyBatch, sample_labeled_gaussian_mixture
 from generative_models.diffusion.samplers import sample_ddpm
 from generative_models.diffusion.schedules import (
     build_diffusion_schedule,
@@ -50,8 +50,10 @@ def load_model_from_checkpoint(
     if not isinstance(checkpoint, Mapping):
         raise ValueError("checkpoint must contain a mapping")
 
-    config = checkpoint.get("config")
-    config = ToyDDPMTrainingConfig.from_mapping(config)
+    raw_config = checkpoint.get("config")
+    if not isinstance(raw_config, Mapping):
+        raise ValueError("checkpoint config must contain a mapping")
+    config = ToyDDPMTrainingConfig.from_mapping(raw_config)
 
     model = TimeConditionedMLPDenoiser(
         data_dim=2,
@@ -62,6 +64,7 @@ def load_model_from_checkpoint(
     model.load_state_dict(checkpoint["model_state_dict"])
     model.eval()
     return model, config
+
 
 def sample_reference_data(
     config: ToyDDPMTrainingConfig,
@@ -77,8 +80,9 @@ def sample_reference_data(
         class_probs=class_probs,
         std=config.data_spec.std,
         device=device,
-        generator=generator
+        generator=generator,
     )
+
 
 def main() -> None:
     args = parse_args()
@@ -108,7 +112,7 @@ def main() -> None:
         config,
         num_samples=args.num_samples,
         device=device,
-        generator=data_generator
+        generator=data_generator,
     )
 
     use_clean_style()

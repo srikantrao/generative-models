@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import json
-from collections.abc import Mapping
 from dataclasses import asdict
 from pathlib import Path
 
@@ -12,17 +11,19 @@ import yaml
 
 from generative_models.training.toy_flow_matching import (
     ToyFlowMatchingTrainingConfig,
-    train_toy_flow_matching
+    train_toy_flow_matching,
 )
 from generative_models.viz.points import save_figure, use_clean_style
 
+
 def load_config(path: Path) -> ToyFlowMatchingTrainingConfig:
-    raw_config: Mapping[str, object] = yaml.safe_load(path.read_text())
+    raw_config = yaml.safe_load(path.read_text()) or {}
     return ToyFlowMatchingTrainingConfig.from_mapping(raw_config)
+
 
 def save_loss_plot(losses: list[float], path: Path) -> Path:
     use_clean_style()
-    fig, ax = plt.subplots(figsize=(7,4))
+    fig, ax = plt.subplots(figsize=(7, 4))
     ax.plot(range(1, len(losses) + 1), losses)
     ax.set_title("Toy Flow Matching Training Loss")
     ax.set_xlabel("step")
@@ -30,6 +31,7 @@ def save_loss_plot(losses: list[float], path: Path) -> Path:
     output_path = save_figure(fig, path)
     plt.close(fig)
     return output_path
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
@@ -50,6 +52,7 @@ def parse_args() -> argparse.Namespace:
     )
     return parser.parse_args()
 
+
 def main() -> None:
     args = parse_args()
     config = load_config(args.config)
@@ -58,7 +61,7 @@ def main() -> None:
         device=args.device,
     )
 
-    args.output_dir.mkdir(parents=True,exist_ok=True)
+    args.output_dir.mkdir(parents=True, exist_ok=True)
     checkpoint_path = args.output_dir / "checkpoint.pt"
     summary_path = args.output_dir / "summary.json"
     loss_plot_path = args.output_dir / "loss.png"

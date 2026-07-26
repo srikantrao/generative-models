@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from collections.abc import Mapping
+from dataclasses import dataclass
 from typing import Self
-
 
 import torch
 
@@ -37,8 +36,18 @@ class ToyDDPMTrainingConfig:
 
     @classmethod
     def from_mapping(cls, values: Mapping[str, object]) -> Self:
+        if not isinstance(values, Mapping):
+            raise ValueError("training config must be a mapping")
+        if not all(isinstance(key, str) for key in values):
+            raise ValueError("training config keys must be strings")
+
         raw_config = dict(values)
+        if "data_spec" not in raw_config:
+            raise ValueError("training config is missing required key: data_spec")
+
         raw_data_spec = raw_config["data_spec"]
+        if not isinstance(raw_data_spec, Mapping):
+            raise ValueError("data_spec must be a mapping")
         raw_config["data_spec"] = ToyGaussianMixtureSpec.from_mapping(raw_data_spec)
 
         try:
@@ -49,8 +58,8 @@ class ToyDDPMTrainingConfig:
         config.validate()
         return config
 
-
     def validate(self) -> None:
+        self.data_spec.validate()
         if self.num_steps <= 0:
             raise ValueError("num_steps must be positive")
         if self.batch_size <= 0:
@@ -121,7 +130,7 @@ def train_toy_ddpm(
             std=config.data_spec.std,
             class_probs=class_probs,
             generator=generator,
-            device=train_device
+            device=train_device,
         )
 
         optimizer.zero_grad(set_to_none=True)
