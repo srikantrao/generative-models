@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 import torch
-from torch import Tensor
+from torch import Tensor, nn
 
 from generative_models.flow_matching.objectives import VelocityPredictor
 
@@ -95,6 +95,7 @@ def heun_step(
     average_velocity = (initial_velocity + final_velocity) / 2
     return state + step_sizes * average_velocity
 
+@torch.no_grad()
 def sample_flow_ode(
     model: VelocityPredictor,
     *,
@@ -140,7 +141,7 @@ def sample_flow_ode(
     # Starting point if you want to record the trajectory
     trajectory = [state.detach().cpu()] if return_trajectory else None
 
-    if hasattr(model, "eval"):
+    if isinstance(model, nn.Module):
         model.eval()
 
     # Choose the ODE Solver that should be used
