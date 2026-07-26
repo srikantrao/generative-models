@@ -75,3 +75,22 @@ def euler_step(
     velocity = model(state, times)
     _validate_velocity(velocity, state)
     return state + step_sizes * velocity
+
+def heun_step(
+    model: VelocityPredictor,
+    state: Tensor,
+    times: Tensor,
+    next_times: Tensor,
+) -> Tensor:
+    _validate_state_and_times(state, times)
+    step_sizes = _expand_step_size(times, next_times, state.shape)
+
+    initial_velocity = model(state, times)
+    _validate_velocity(initial_velocity, state)
+
+    predicted_state = state + step_sizes * initial_velocity
+    final_velocity = model(predicted_state, next_times)
+    _validate_velocity(final_velocity, predicted_state)
+
+    average_velocity = (initial_velocity + final_velocity) / 2
+    return state + step_sizes * average_velocity
