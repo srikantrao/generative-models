@@ -23,9 +23,20 @@ def _validate_state_and_times(state: Tensor, times: Tensor) -> None:
         raise ValueError(f"times must have shape [batch], got {tuple(times.shape)}")
     if times.shape[0] != state.shape[0]:
         raise ValueError(f"times batch size {times.shape[0]} does not match state batch size {state.shape[0]}")
-        if not torch.is_floating_point(times):
-            raise ValueError("times must be floating point")
-        if times.device != state.device:
-            raise ValueError("times must be on the same device as state")
-        if torch.any(times < 0) or torch.any(times > 1):
-            raise ValueError("times must be in [0, 1]")
+    if not torch.is_floating_point(times):
+        raise ValueError("times must be floating point")
+    if times.device != state.device:
+        raise ValueError("times must be on the same device as state")
+    if torch.any(times < 0) or torch.any(times > 1):
+        raise ValueError("times must be in [0, 1]")
+
+def _validate_velocity(velocity: Tensor, state: Tensor) -> None:
+    if velocity.shape != state.shape:
+        raise ValueError(
+            f"velocity must have shape {tuple(state.shape)}, "
+            f"got {tuple(velocity.shape)}"
+        )
+    if velocity.device != state.device:
+        raise ValueError("velocity must be on the same device as state")
+    if velocity.dtype != state.dtype:
+        raise ValueError("velocity must have the same dtype as state")
