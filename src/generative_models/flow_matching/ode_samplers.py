@@ -8,7 +8,7 @@ from torch import Tensor
 
 from generative_models.flow_matching.objectives import VelocityPredictor
 
-ODE_SOLVER = Literal["euler", "heun"]
+ODESolver = Literal["euler", "heun"]
 
 @dataclass(frozen=True)
 class FlowODESample:
@@ -94,3 +94,68 @@ def heun_step(
 
     average_velocity = (initial_velocity + final_velocity) / 2
     return state + step_sizes * average_velocity
+
+def sample_flow_ode(
+    model: VelocityPredictor,
+    *,
+    num_samples: int,
+    sample_shape: tuple[int, ...],
+    num_steps: int = 100,
+    solver: ODESolver = "heun",
+    device: torch.device | str = "cpu",
+    dtype: torch.dtype = torch.float32,
+    generator: torch.Generator | None = None,
+    return_trajectory: bool = False,
+) -> FlowODESample:
+    if num_samples <= 0:
+        raise ValueError("num_samples must be positive")
+    if len(sample_shape) == 0:
+        raise ValueError("sample_shape must not be empty")
+    if any(dimension <= 0 for dimension in sample_shape):
+        raise ValueError("sample_shape dimensions must be positive")
+    if num_steps <= 0:
+        raise ValueError("num_steps must be positive")
+    if not dtype.is_floating_point:
+        raise ValueError("dtype must be floating point")
+
+    sample_device = torch.device(device)
+
+    # Start with Noise
+    state = torch.randn(
+        (num_samples, ) + (sample_shape),
+        generator=generator,
+        device=device,
+        dtype=dtype,
+    )
+
+    # Time steps
+    time_grid = torch.linspace(
+        0.0,
+        1.0,
+        num_steps + 1,
+        device=sample_device,
+        dtype=dtype
+    )
+
+    # Starting point if you want to record the trajectory
+    trajectory = [state.detach().cpu()] if return_trajectory else None
+
+    if hasattr(model, "eval"):
+        model.eval()
+
+    # Choose the ODE Solver that should be used
+    step_function = euler_step if solver == "euler" else heun_step
+
+    for step_index in range(num_steps):
+        times = time_grid[step_index].expand(num_samples) # repeat the same value across the batch dimension.
+        next_times = time_grid[step_index + 1].expand(num_samples)
+        state = step_function(model, state, times, next_times)
+
+        if trajectory is not None:
+            trajectory.append(state.detach().cpu())
+
+    return FlowODESample(
+        samples=state,
+        times=time_grid.detach().cpu(),
+        trajectory=torch.stack(trajectory) if trajectory is not None else None
+    )
