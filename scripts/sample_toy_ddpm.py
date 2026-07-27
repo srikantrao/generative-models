@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-from collections.abc import Mapping
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -13,7 +12,9 @@ from generative_models.diffusion.schedules import (
     build_diffusion_schedule,
     linear_beta_schedule,
 )
-from generative_models.models.mlp import TimeConditionedMLPDenoiser
+from generative_models.experiments.toy_checkpoints import (
+    load_toy_ddpm_checkpoint,
+)
 from generative_models.training.toy_ddpm import ToyDDPMTrainingConfig
 from generative_models.viz.points import (
     plot_labeled_points,
@@ -40,32 +41,6 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def load_model_from_checkpoint(
-    checkpoint_path: Path,
-    *,
-    device: torch.device,
-) -> tuple[TimeConditionedMLPDenoiser, ToyDDPMTrainingConfig]:
-    checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=True)
-
-    if not isinstance(checkpoint, Mapping):
-        raise ValueError("checkpoint must contain a mapping")
-
-    raw_config = checkpoint.get("config")
-    if not isinstance(raw_config, Mapping):
-        raise ValueError("checkpoint config must contain a mapping")
-    config = ToyDDPMTrainingConfig.from_mapping(raw_config)
-
-    model = TimeConditionedMLPDenoiser(
-        data_dim=2,
-        time_embedding_dim=config.time_embedding_dim,
-        hidden_dim=config.hidden_dim,
-        num_hidden_layers=config.num_hidden_layers,
-    ).to(device)
-    model.load_state_dict(checkpoint["model_state_dict"])
-    model.eval()
-    return model, config
-
-
 def sample_reference_data(
     config: ToyDDPMTrainingConfig,
     *,
@@ -87,7 +62,8 @@ def sample_reference_data(
 def main() -> None:
     args = parse_args()
     device = torch.device(args.device)
-    model, config = load_model_from_checkpoint(args.checkpoint, device=device)
+    loaded = load_toy_ddpm_checkpoint(args.checkpoint, device=device)
+    model, config = loaded.model, loaded.config
     schedule = build_diffusion_schedule(
         linear_beta_schedule(
             config.num_timesteps,

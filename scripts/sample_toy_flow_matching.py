@@ -3,7 +3,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-from collections.abc import Mapping
 from dataclasses import asdict
 from pathlib import Path
 
@@ -12,8 +11,9 @@ import torch
 
 from generative_models.data.toy import sample_labeled_gaussian_mixture
 from generative_models.flow_matching.ode_samplers import ODESolver, sample_flow_ode
-from generative_models.models.flow_mlp import TimeConditionedMLPVectorField
-from generative_models.training.toy_flow_matching import ToyFlowMatchingTrainingConfig
+from generative_models.experiments.toy_checkpoints import (
+    load_toy_flow_checkpoint,
+)
 from generative_models.viz.points import (
     plot_labeled_points,
     save_figure,
@@ -52,44 +52,6 @@ def sha256_file(path: Path) -> str:
         return hashlib.file_digest(checkpoint_file, "sha256").hexdigest()
 
 
-def load_model_from_checkpoint(
-    checkpoint_path: Path,
-    *,
-    device: torch.device,
-) -> tuple[TimeConditionedMLPVectorField, ToyFlowMatchingTrainingConfig]:
-    if not checkpoint_path.is_file():
-        raise FileNotFoundError(f"checkpoint does not exist: {checkpoint_path}")
-
-    checkpoint = torch.load(
-        checkpoint_path,
-        map_location=device,
-        weights_only=True,
-    )
-
-    if not isinstance(checkpoint, Mapping):
-        raise ValueError("checkpoint must contain a mapping")
-
-    missing_keys = REQUIRED_CHECKPOINT_KEYS.difference(checkpoint)
-    if missing_keys:
-        missing = ", ".join(sorted(missing_keys))
-        raise ValueError(f"checkpoint is missing required keys: {missing}")
-
-    raw_config = checkpoint["config"]
-    if not isinstance(raw_config, Mapping):
-        raise ValueError("checkpoint config must contain a mapping")
-
-    config = ToyFlowMatchingTrainingConfig.from_mapping(raw_config)
-    model = TimeConditionedMLPVectorField(
-        data_dim=2,
-        time_embedding_dim=config.time_embedding_dim,
-        hidden_dim=config.hidden_dim,
-        num_hidden_layers=config.num_hidden_layers,
-    ).to(device=device)
-    model.load_state_dict(checkpoint["model_state_dict"])
-    model.eval()
-    return model, config
-
-
 def count_parameters(model: torch.nn.Module) -> int:
     return sum(parameter.numel() for parameter in model.parameters())
 
@@ -110,9 +72,9 @@ def run_sampling_artifact(
 ) -> dict[str, object]:
 
     sample_device = torch.device(device)
-    model, training_config = load_model_from_checkpoint(
-        checkpoint_path, device=sample_device
-    )
+    loaded = load_toy_flow_checkpoint(checkpoint_path, device=sample_device)
+    model = loaded.model
+    training_config = loaded.config
     model_dtype = next(model.parameters()).dtype
 
     source_generator = torch.Generator(device=sample_device).manual_seed(seed)
