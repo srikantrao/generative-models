@@ -23,10 +23,12 @@ MNIST_RAW_FILENAMES = (
 
 MNIST_NORMALIZATION = "uint8 [0,255] -> float32 [0,1] -> 2*x-1 -> [-1,1]"
 
+
 @dataclass(frozen=True)
 class MNISTEvaluatorSplit:
     train_indices: Tensor
     validation_indices: Tensor
+
 
 def normalize_mnist_image(image: Tensor) -> Tensor:
     """
@@ -36,6 +38,7 @@ def normalize_mnist_image(image: Tensor) -> Tensor:
         raise ValueError("image must have floating-point dtype")
     return image.mul(2.0).sub(1.0)
 
+
 def denormalize_mnist_image(image: Tensor) -> Tensor:
     """
     performs the following computation to the values: [-1.1] -> (x+1)/2 --> [0,1]
@@ -43,6 +46,7 @@ def denormalize_mnist_image(image: Tensor) -> Tensor:
     if not image.dtype.is_floating_point:
         raise ValueError("image must have floating-point dtype")
     return image.add(1.0).mul(0.5)
+
 
 def mnist_transform() -> Compose:
     """
@@ -57,18 +61,15 @@ def mnist_transform() -> Compose:
         ]
     )
 
+
 def load_mnist_split(
     root: str | Path,
     *,
     train: bool,
     download: bool,
 ) -> MNIST:
-    return MNIST(
-        root=root,
-        train=train,
-        transform=mnist_transform(),
-        download=download
-    )
+    return MNIST(root=root, train=train, transform=mnist_transform(), download=download)
+
 
 def make_mnist_evaluator_split(
     *,
@@ -86,6 +87,7 @@ def make_mnist_evaluator_split(
         train_indices=train_indices,
         validation_indices=validation_indices,
     )
+
 
 def index_set_sha256(indices: Tensor) -> str:
     canonical = torch.sort(indices.detach().to(device="cpu", dtype=torch.int64)).values
