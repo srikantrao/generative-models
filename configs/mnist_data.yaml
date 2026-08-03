@@ -1,0 +1,15 @@
+data_root: data/mnist
+download: true
+
+image_index: 0
+seed: 42
+
+split_seed: 2026
+validation_size: 5000
+
+num_timesteps: 1000
+beta_start: 0.0001
+beta_end: 0.02
+ddpm_timesteps: [0, 99, 299, 599, 999]
+
+flow_times: [0.0, 0.25, 0.5, 0.75, 1.0]
