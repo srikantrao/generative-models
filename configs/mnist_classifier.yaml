@@ -1,0 +1,14 @@
+data_root: data/mnist
+download: true
+split_seed: 2026
+validation_size: 5000
+training_seed: 42
+batch_size: 128
+evaluation_batch_size: 512
+num_workers: 0
+num_epochs: 6
+learning_rate: 0.001
+weight_decay: 0.0001
+feature_dim: 128
+dropout: 0.2
+minimum_test_accuracy: 0.99
