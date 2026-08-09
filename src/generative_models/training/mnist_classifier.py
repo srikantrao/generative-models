@@ -8,7 +8,6 @@ from torch.utils.data import DataLoader, Subset
 
 from generative_models.data.mnist import (
     MNIST_NUM_CLASSES,
-    MNIST_TRAIN_SIZE,
     MNISTEvaluatorSplit,
     load_mnist_split,
     make_mnist_evaluator_split,
@@ -249,10 +248,10 @@ def train_mnist_classifier(
 
         # print metrics to stdout
         print(
-            f"epoch={epoch:02d}"
-            f"train_loss={training_metrics.loss:.4f}"
-            f"train_accuracy={training_metrics.accuracy:.4f}"
-            f"validation_loss={validation_metrics.loss:.4f}"
+            f"epoch={epoch:02d} "
+            f"train_loss={training_metrics.loss:.4f} "
+            f"train_accuracy={training_metrics.accuracy:.4f} "
+            f"validation_loss={validation_metrics.loss:.4f} "
             f"validation_accuracy={validation_metrics.accuracy:.4f}"
         )
 
@@ -265,19 +264,19 @@ def train_mnist_classifier(
                 for name, tensor in model.state_dict().items()
             }
 
-        assert best_state_dict is not None
-        model.load_state_dict(best_state_dict)
-        test_result = evaluate_classifier(
-            model,
-            loaders.test,
-            device=train_device,
-        )
+    assert best_state_dict is not None
+    model.load_state_dict(best_state_dict)
+    test_result = evaluate_classifier(
+        model,
+        loaders.test,
+        device=train_device,
+    )
 
-        return MNISTClassifierTrainingResult(
-            model=model,
-            history=history,
-            best_epoch=best_epoch,
-            best_validation_accuracy=best_validation_accuracy,
-            test=test_result,
-            split=loaders.split,
-        )
+    return MNISTClassifierTrainingResult(
+        model=model,
+        history=history,
+        best_epoch=best_epoch,
+        best_validation_accuracy=best_validation_accuracy,
+        test=test_result,
+        split=loaders.split,
+    )
