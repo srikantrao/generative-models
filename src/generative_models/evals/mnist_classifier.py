@@ -4,10 +4,12 @@ from dataclasses import dataclass
 
 from torch import Tensor, nn
 
+
 @dataclass(frozen=True)
 class MNISTClassifierOutput:
     logits: Tensor
     features: Tensor
+
 
 class MNISTClassifier(nn.Module):
     def __init__(
@@ -33,9 +35,7 @@ class MNISTClassifier(nn.Module):
         )
 
         self.feature_projection = nn.Sequential(
-            nn.Flatten(),
-            nn.Linear(64 * 7 * 7, feature_dim),
-            nn.ReLU()
+            nn.Flatten(), nn.Linear(64 * 7 * 7, feature_dim), nn.ReLU()
         )
         self.dropout = nn.Dropout(dropout)
         self.classifier = nn.Linear(feature_dim, 10)
@@ -45,6 +45,7 @@ class MNISTClassifier(nn.Module):
         features: Tensor = self.feature_projection(encoded)
         logits: Tensor = self.classifier(self.dropout(features))
         return MNISTClassifierOutput(logits=logits, features=features)
+
 
 def freeze_mnist_classifier(model: MNISTClassifier) -> MNISTClassifier:
     model.eval()

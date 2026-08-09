@@ -16,6 +16,7 @@ from generative_models.data.mnist import (
 from generative_models.evals.mnist_classifier import MNISTClassifier
 from generative_models.seeds import seed_everything
 
+
 @dataclass(frozen=True)
 class MNISTClassifierTrainingConfig:
     data_root: str = "data/mnist"
@@ -33,15 +34,18 @@ class MNISTClassifierTrainingConfig:
     dropout: float = 0.2
     minimum_test_accuracy: float = 0.99
 
+
 @dataclass(frozen=True)
 class ClassificationMetrics:
     loss: float
     accuracy: float
 
+
 @dataclass(frozen=True)
 class EvaluationResult:
     metrics: ClassificationMetrics
     confusion_matrix: Tensor
+
 
 @dataclass(frozen=True)
 class EpochRecord:
@@ -49,12 +53,14 @@ class EpochRecord:
     training: ClassificationMetrics
     validation: ClassificationMetrics
 
+
 @dataclass(frozen=True)
 class MNISTClassifierLoaders:
     training: DataLoader
     validation: DataLoader
     test: DataLoader
     split: MNISTEvaluatorSplit
+
 
 @dataclass(frozen=True)
 class MNISTClassifierTrainingResult:
@@ -64,6 +70,7 @@ class MNISTClassifierTrainingResult:
     best_validation_accuracy: float
     test: EvaluationResult
     split: MNISTEvaluatorSplit
+
 
 def confusion_matrix_from_predictions(
     predictions: Tensor,
@@ -80,34 +87,25 @@ def confusion_matrix_from_predictions(
         minlength=num_classes * num_classes,
     ).reshape(num_classes, num_classes)
 
+
 def build_mnist_classifier_loaders(
     config: MNISTClassifierTrainingConfig,
     *,
     device: torch.device,
 ) -> MNISTClassifierLoaders:
     training_dataset = load_mnist_split(
-        config.data_root,
-        train=True,
-        download=config.download
+        config.data_root, train=True, download=config.download
     )
     test_dataset = load_mnist_split(
-        config.data_root,
-        train=False,
-        download=config.download
+        config.data_root, train=False, download=config.download
     )
     split = make_mnist_evaluator_split(
         num_examples=len(training_dataset),
         validation_size=config.validation_size,
-        seed=config.split_seed
+        seed=config.split_seed,
     )
-    training_subset = Subset(
-        training_dataset,
-        split.train_indices.tolist()
-    )
-    validation_subset = Subset(
-        training_dataset,
-        split.validation_indices.tolist()
-    )
+    training_subset = Subset(training_dataset, split.train_indices.tolist())
+    validation_subset = Subset(training_dataset, split.validation_indices.tolist())
     shuffle_generator = torch.Generator().manual_seed(config.training_seed)
     loader_options = {
         "num_workers": config.num_workers,
@@ -133,8 +131,9 @@ def build_mnist_classifier_loaders(
             shuffle=False,
             **loader_options,
         ),
-        split=split
+        split=split,
     )
+
 
 def train_classifier_epoch(
     model: MNISTClassifier,
@@ -165,9 +164,10 @@ def train_classifier_epoch(
         total_loss += float(loss.detach()) * batch_size
 
     return ClassificationMetrics(
-        loss = total_loss / total_examples,
-        accuracy= total_correct / total_examples,
+        loss=total_loss / total_examples,
+        accuracy=total_correct / total_examples,
     )
+
 
 @torch.inference_mode()
 def evaluate_classifier(
@@ -180,11 +180,7 @@ def evaluate_classifier(
     total_loss = 0.0
     total_correct = 0
     total_examples = 0
-    confusion = torch.zeros(
-        MNIST_NUM_CLASSES,
-        MNIST_NUM_CLASSES,
-        dtype=torch.int64
-    )
+    confusion = torch.zeros(MNIST_NUM_CLASSES, MNIST_NUM_CLASSES, dtype=torch.int64)
 
     for images, labels in loader:
         images = images.to(device)
@@ -196,7 +192,7 @@ def evaluate_classifier(
 
         batch_size = labels.shape[0]
         total_examples += batch_size
-        total_correct += int((output.logits.argmax(dim=1)==labels).sum())
+        total_correct += int((output.logits.argmax(dim=1) == labels).sum())
         total_loss += float(loss.detach()) * batch_size
         confusion += confusion_matrix_from_predictions(predictions, labels)
 
@@ -210,9 +206,7 @@ def evaluate_classifier(
 
 
 def train_mnist_classifier(
-    config: MNISTClassifierTrainingConfig,
-    *,
-    device: torch.device | str = "cpu"
+    config: MNISTClassifierTrainingConfig, *, device: torch.device | str = "cpu"
 ) -> MNISTClassifierTrainingResult:
 
     train_device = torch.device(device)
@@ -224,9 +218,7 @@ def train_mnist_classifier(
         dropout=config.dropout,
     ).to(train_device)
     optimizer = torch.optim.AdamW(
-        model.parameters(),
-        lr=config.learning_rate,
-        weight_decay=config.weight_decay
+        model.parameters(), lr=config.learning_rate, weight_decay=config.weight_decay
     )
 
     history: list[EpochRecord] = []
@@ -269,7 +261,8 @@ def train_mnist_classifier(
             best_validation_accuracy = validation_metrics.accuracy
             best_epoch = epoch
             best_state_dict = {
-                name: tensor.detach().cpu().clone() for name, tensor in model.state_dict().items()
+                name: tensor.detach().cpu().clone()
+                for name, tensor in model.state_dict().items()
             }
 
         assert best_state_dict is not None
