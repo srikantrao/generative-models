@@ -43,6 +43,7 @@ class TimeConditionedResidualBlock(nn.Module):
         hidden = self.output_layers(hidden)
         return self.shortcut(features) + hidden
 
+
 class MNISTUNet(nn.Module):
     def __init__(
         self,
@@ -63,7 +64,7 @@ class MNISTUNet(nn.Module):
             ContinuousTimeEmbedding(time_embedding_dim),
             nn.Linear(time_embedding_dim, conditioning_dim),
             nn.SiLU(),
-            nn.Linear(conditioning_dim, conditioning_dim)
+            nn.Linear(conditioning_dim, conditioning_dim),
         )
 
         self.input_projection = nn.Conv2d(
@@ -77,7 +78,7 @@ class MNISTUNet(nn.Module):
             channels_28,
             conditioning_dim=conditioning_dim,
             num_groups=num_groups,
-            dropout=dropout
+            dropout=dropout,
         )
         self.downsample_14 = nn.Conv2d(
             channels_28,
@@ -91,7 +92,7 @@ class MNISTUNet(nn.Module):
             channels_14,
             conditioning_dim=conditioning_dim,
             num_groups=num_groups,
-            dropout=dropout
+            dropout=dropout,
         )
         self.downsample_7 = nn.Conv2d(
             channels_14,
@@ -115,11 +116,7 @@ class MNISTUNet(nn.Module):
             dropout=dropout,
         )
         self.upsample_14 = nn.ConvTranspose2d(
-            channels_7,
-            channels_14,
-            kernel_size=4,
-            stride=2,
-            padding=1
+            channels_7, channels_14, kernel_size=4, stride=2, padding=1
         )
         self.decoder_14 = TimeConditionedResidualBlock(
             channels_14 * 2,
@@ -145,7 +142,7 @@ class MNISTUNet(nn.Module):
         self.output_projection = nn.Sequential(
             nn.GroupNorm(num_groups, channels_28),
             nn.SiLU(),
-            nn.Conv2d(channels_28, 1, kernel_size=3, padding=1)
+            nn.Conv2d(channels_28, 1, kernel_size=3, padding=1),
         )
 
     def forward(self, images: Tensor, times: Tensor) -> Tensor:
