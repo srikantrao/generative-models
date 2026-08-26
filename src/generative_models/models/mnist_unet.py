@@ -50,6 +50,7 @@ class MNISTUNet(nn.Module):
         *,
         base_channels: int = 32,
         time_embedding_dim: int = 64,
+        num_classes: int = 10,
         num_groups: int = 8,
         dropout: float = 0.1,
     ) -> None:
@@ -59,12 +60,20 @@ class MNISTUNet(nn.Module):
         channels_7 = base_channels * 4
         conditioning_dim = base_channels * 4
         self.conditioning_dim = conditioning_dim
+        self.num_classes = num_classes
 
+        # time embedding
         self.time_embedding = nn.Sequential(
             ContinuousTimeEmbedding(time_embedding_dim),
             nn.Linear(time_embedding_dim, conditioning_dim),
             nn.SiLU(),
             nn.Linear(conditioning_dim, conditioning_dim),
+        )
+
+        # class embedding
+        self.class_embedding = nn.Embedding(
+            num_classes,
+            conditioning_dim
         )
 
         self.input_projection = nn.Conv2d(
@@ -145,9 +154,22 @@ class MNISTUNet(nn.Module):
             nn.Conv2d(channels_28, 1, kernel_size=3, padding=1),
         )
 
-    def forward(self, images: Tensor, times: Tensor) -> Tensor:
+    def forward(self, images: Tensor, times: Tensor, labels: Tensor) -> Tensor:
+        # both labels and times should just have shape [B]
+        if labels.shape != times.shape:
+            raise ValueError(f"got labels={tuple(labels.shape)} and times={tuple(times.shape)}")
+        # labels are indices and not continuous measurements
+        if labels.dtype != torch.long:
+            raise ValueError("labels must have dtype torch.long")
+
         times = times.to(device=images.device, dtype=images.dtype)
-        conditioning = self.time_embedding(times)
+        labels = labels.to(device=images.device)
+
+        # combine conditioning -> time + class conditioning
+        time_conditioning = self.time_embedding(times)
+        class_conditioning = self.class_embedding(labels)
+        # c = c_t + c_y
+        conditioning = time_conditioning + class_conditioning
 
         features_28 = self.input_projection(images)
         skip_28 = self.encoder_28(features_28, conditioning)
