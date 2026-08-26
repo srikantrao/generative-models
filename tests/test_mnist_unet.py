@@ -44,5 +44,5 @@ def test_conditioned_mnist_unet_rejects_broadcastable_label_shape() -> None:
     times = torch.full((2,), 0.5)
     labels = torch.tensor([[2], [7]], dtype=torch.long)
 
-    with pytest.raises(ValueError, match="labels must have the same"):
+    with pytest.raises(ValueError, match="got labels"):
         model(images, times, labels)
