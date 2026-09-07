@@ -28,15 +28,11 @@ def linear_beta_schedule(
     device: torch.device | str | None = None,
     dtype: torch.dtype = torch.float32,
 ) -> Tensor:
-    if num_timesteps <= 0:
-        raise ValueError("num_timesteps must be positive")
-    if not 0 < beta_start < 1:
-        raise ValueError("beta_start must be in (0, 1)")
-    if not 0 < beta_end < 1:
-        raise ValueError("beta_end must be in (0, 1)")
-    if beta_start > beta_end:
-        raise ValueError("beta_start must be less than or equal to beta_end")
-
+    """
+    generate the beta values that will be used in a schedule.
+    currently is a linear interpolation of the values between start and end for the
+    required number of timesteps.
+    """
     return torch.linspace(
         beta_start, beta_end, num_timesteps, device=device, dtype=dtype
     )
