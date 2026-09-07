@@ -64,9 +64,6 @@ def ddpm_reverse_step(
     *,
     generator: torch.Generator | None = None,
 ) -> DDPMReverseStep:
-    if xt.ndim < 2:
-        raise ValueError("xt must have shape [batch, ...]")
-
     timesteps = timesteps.to(device=xt.device)
     predicted_noise = model(xt, timesteps)
     mean = ddpm_reverse_mean(schedule, xt, timesteps, predicted_noise)
@@ -103,13 +100,6 @@ def sample_ddpm(
     generator: torch.Generator | None = None,
     return_trajectory: bool = False,
 ) -> DDPMSample:
-    if num_samples <= 0:
-        raise ValueError("num_samples must be positive")
-    if len(sample_shape) == 0:
-        raise ValueError("sample_shape must not be empty")
-    if any(dim <= 0 for dim in sample_shape):
-        raise ValueError("sample_shape dimensions must be positive")
-
     sample_device = torch.device(device)
     xt = torch.randn(
         (num_samples,) + sample_shape,
@@ -117,7 +107,6 @@ def sample_ddpm(
         device=sample_device,
     )
     trajectory = [xt.detach().cpu()] if return_trajectory else None
-
     if hasattr(model, "eval"):
         model.eval()
 
