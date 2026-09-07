@@ -72,11 +72,8 @@ def q_sample(
     noise: Tensor | None = None,
     generator: torch.Generator | None = None,
 ) -> ForwardProcessSample:
-    if x0.ndim < 2:
-        raise ValueError("x0 must have shape [batch, ...]")
 
     timesteps = timesteps.to(device=x0.device)
-
     if noise is None:
         noise = torch.randn(
             x0.shape,
@@ -84,16 +81,6 @@ def q_sample(
             device=x0.device,
             dtype=x0.dtype,
         )
-    else:
-        if noise.shape != x0.shape:
-            raise ValueError(
-                f"noise must have shape {tuple(x0.shape)}, got {tuple(noise.shape)}"
-            )
-        if noise.device != x0.device:
-            raise ValueError("noise must be on the same device as x0")
-        if noise.dtype != x0.dtype:
-            raise ValueError("noise must have the same dtype as x0")
-
     sqrt_alpha_bars = extract_schedule_values(
         schedule.sqrt_alpha_bars,
         timesteps,
