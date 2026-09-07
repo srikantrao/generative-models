@@ -69,15 +69,6 @@ def cosine_beta_schedule(
 
 
 def build_diffusion_schedule(betas: Tensor) -> DiffusionSchedule:
-    if betas.ndim != 1:
-        raise ValueError(
-            f"betas must have shape [num_timesteps], got {tuple(betas.shape)}"
-        )
-    if betas.numel() == 0:
-        raise ValueError("betas must not be empty")
-    if torch.any(betas <= 0) or torch.any(betas >= 1):
-        raise ValueError("all betas must be in (0, 1)")
-
     betas = betas.to(dtype=torch.float32)
     alphas = 1.0 - betas
     alpha_bars = torch.cumprod(alphas, dim=0)
