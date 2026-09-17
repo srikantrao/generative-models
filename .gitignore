@@ -1,9 +1,13 @@
 # Local planning and private specs
 .local/
+/local/
 notes/
 specs/
 
 # Local environments and caches
+.env
+.env.*
+!.env.example
 .venv/
 .ruff_cache/
 __pycache__/
