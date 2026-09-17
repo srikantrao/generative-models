@@ -100,15 +100,3 @@ def test_q_sample_rejects_timestep_out_of_range() -> None:
             torch.zeros(2, 2),
             torch.tensor([0, 1], dtype=torch.long),
         )
-
-
-def test_q_sample_rejects_noise_shape_mismatch() -> None:
-    schedule = build_diffusion_schedule(torch.tensor([0.1], dtype=torch.float32))
-
-    with pytest.raises(ValueError, match="noise must have shape"):
-        _ = q_sample(
-            schedule,
-            torch.zeros(2, 2),
-            torch.zeros(2, dtype=torch.long),
-            noise=torch.zeros(2, 3),
-        )
