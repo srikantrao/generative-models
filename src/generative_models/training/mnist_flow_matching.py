@@ -75,13 +75,13 @@ def train_mnist_conditional_flow(
     )
 
     # Setup Model
-    model = build_mnist_flow_model(config)
+    model = build_mnist_flow_model(config).to(train_device)
     optimizer = torch.optim.AdamW(
         model.parameters(),
         lr=config.learning_rate,
         weight_decay=config.weight_decay,
     )
-    path_generator = torch.Generator().manual_seed(config.path_seed)
+    path_generator = torch.Generator(device=train_device).manual_seed(config.path_seed)
 
     losses: list[float] = []
     batches = iter(loader)
