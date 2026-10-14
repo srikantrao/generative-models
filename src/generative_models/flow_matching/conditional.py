@@ -10,12 +10,13 @@ from generative_models.flow_matching.ode_samplers import (
     FlowODESample,
     ODESolver,
     euler_step,
-    heun_step
+    heun_step,
 )
 
 from generative_models.flow_matching.paths import sample_linear_flow_path
 
 ConditionalVelocityPredictor = Callable[[Tensor, Tensor, Tensor], Tensor]
+
 
 @dataclass(frozen=True)
 class ConditionalFlowMatchingLoss:
@@ -25,6 +26,7 @@ class ConditionalFlowMatchingLoss:
     xt: Tensor
     times: Tensor
     source_noise: Tensor
+
 
 def conditional_flow_matching_loss(
     model: ConditionalVelocityPredictor,
@@ -36,10 +38,7 @@ def conditional_flow_matching_loss(
     generator: torch.Generator | None = None,
 ) -> ConditionalFlowMatchingLoss:
     path = sample_linear_flow_path(
-        data,
-        times=times,
-        source_noise=source_noise,
-        generator=generator
+        data, times=times, source_noise=source_noise, generator=generator
     )
     predicted_velocity = model(path.xt, path.times, labels)
     loss = (predicted_velocity - path.target_velocity).square().mean()
@@ -50,8 +49,9 @@ def conditional_flow_matching_loss(
         target_velocity=path.target_velocity,
         xt=path.xt,
         times=path.times,
-        source_noise=path.source_noise
+        source_noise=path.source_noise,
     )
+
 
 @torch.no_grad()
 def sample_conditional_flow_ode(
@@ -85,10 +85,7 @@ def sample_conditional_flow_ode(
         times = time_grid[step_index].expand(state.shape[0])
         next_times = time_grid[step_index + 1].expand(state.shape[0])
         state = step_function(
-            model=predict_velocity,
-            state=state,
-            times=times,
-            next_times=next_times
+            model=predict_velocity, state=state, times=times, next_times=next_times
         )
         if trajectory is not None:
             trajectory.append(state.detach().cpu())
@@ -96,5 +93,5 @@ def sample_conditional_flow_ode(
     return FlowODESample(
         samples=state,
         times=time_grid.detach().cpu(),
-        trajectory=torch.stack(trajectory) if trajectory is not None else None
+        trajectory=torch.stack(trajectory) if trajectory is not None else None,
     )

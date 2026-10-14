@@ -1,20 +1,17 @@
 import pytest
 import torch
 
-from generative_models.flow_matching.conditional import (
-    sample_conditional_flow_ode
-)
+from generative_models.flow_matching.conditional import sample_conditional_flow_ode
+
 
 class LabelVelocity:
     def __call__(
-        self,
-        state: torch.Tensor,
-        times: torch.Tensor,
-        labels: torch.Tensor
+        self, state: torch.Tensor, times: torch.Tensor, labels: torch.Tensor
     ) -> torch.Tensor:
         del times
         values = labels.to(dtype=state.dtype)
         return values[:, None, None, None].expand_as(state)
+
 
 @pytest.mark.parametrize("solver", ["euler", "heun"])
 def test_conditional_flow_solver_holds_labels_fixed(solver: str) -> None:

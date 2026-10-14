@@ -19,20 +19,18 @@ from generative_models.training.mnist_flow_matching import (
 )
 from generative_models.viz.points import save_figure, use_clean_style
 
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--config",
-        type=Path,
-        default=Path("configs/mnist_conditional_flow.yaml")
+        "--config", type=Path, default=Path("configs/mnist_conditional_flow.yaml")
     )
     parser.add_argument(
-        "--output-dir",
-        type=Path,
-        default=Path("runs/mnist_conditional_flow")
+        "--output-dir", type=Path, default=Path("runs/mnist_conditional_flow")
     )
     parser.add_argument("--device", default="cpu")
     return parser.parse_args()
+
 
 def main() -> None:
 
@@ -110,9 +108,5 @@ def main() -> None:
     print(f"Wrote {summary_path}")
 
 
-
-
-
-
-if __name__=="__main__":
+if __name__ == "__main__":
     main()

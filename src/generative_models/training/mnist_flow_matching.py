@@ -3,7 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import torch
-from torch._dynamo.logging import num_steps
 from torch.fft import Tensor
 from torch.utils.data import DataLoader
 
@@ -13,6 +12,7 @@ from generative_models.flow_matching.conditional import (
 )
 from generative_models.models.mnist_unet import MNISTUNet
 from generative_models.seeds import seed_everything
+
 
 @dataclass(frozen=True)
 class MNISTFlowTrainingConfig:
@@ -33,10 +33,12 @@ class MNISTFlowTrainingConfig:
     num_groups: int = 8
     dropout: float = 0.1
 
+
 @dataclass
 class MNISTFlowTrainingResult:
     model: MNISTUNet
     losses: list[float]
+
 
 def build_mnist_flow_model(config: MNISTFlowTrainingConfig) -> MNISTUNet:
     return MNISTUNet(
@@ -44,8 +46,9 @@ def build_mnist_flow_model(config: MNISTFlowTrainingConfig) -> MNISTUNet:
         time_embedding_dim=config.time_embedding_dim,
         num_classes=config.num_classes,
         num_groups=config.num_groups,
-        dropout=config.dropout
+        dropout=config.dropout,
     )
+
 
 def train_mnist_conditional_flow(
     config: MNISTFlowTrainingConfig,
@@ -58,9 +61,7 @@ def train_mnist_conditional_flow(
 
     # Setup Data
     dataset = load_mnist_split(
-        root=config.data_root,
-        train=True,
-        download=config.download
+        root=config.data_root, train=True, download=config.download
     )
     data_generator = torch.Generator().manual_seed(config.data_seed)
     loader = DataLoader(
@@ -86,7 +87,7 @@ def train_mnist_conditional_flow(
     batches = iter(loader)
     model.train()
 
-    for step in range(1, config.num_steps+1):
+    for step in range(1, config.num_steps + 1):
         try:
             images, labels = next(batches)
         except StopIteration:
@@ -98,10 +99,7 @@ def train_mnist_conditional_flow(
 
         optimizer.zero_grad(set_to_none=True)
         output = conditional_flow_matching_loss(
-            model,
-            images,
-            labels,
-            generator=path_generator
+            model, images, labels, generator=path_generator
         )
         output.loss.backward()
         optimizer.step()
