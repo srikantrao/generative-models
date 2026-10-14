@@ -73,15 +73,6 @@ def sample_linear_flow_path(
             dtype=data.dtype,
             device=data.device,
         )
-    else:
-        if source_noise.shape != data.shape:
-            raise ValueError(
-                f"source_noise must have shape {tuple(data.shape)}, got {tuple(source_noise.shape)}"
-            )
-        if source_noise.device != data.device:
-            raise ValueError("source_noise must be on the same device as data")
-        if source_noise.dtype != data.dtype:
-            raise ValueError("source_noise must have the same dtype as data")
 
     expanded_times = expand_times(times, data.shape).to(dtype=data.dtype)
     xt = (1.0 - expanded_times) * source_noise + expanded_times * data

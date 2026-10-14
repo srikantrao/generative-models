@@ -7,6 +7,9 @@ import torch
 
 
 def seed_everything(seed: int) -> None:
+    """
+    use the same seed for random, numpy, torch and torch.cuda libraries
+    """
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
