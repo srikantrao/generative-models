@@ -11,8 +11,8 @@ import torch
 from generative_models.data.mnist import denormalize_mnist_image
 from generative_models.diffusion.conditional import sample_conditional_ddpm
 from generative_models.evals.mnist_generation import (
-    evaluate_generated_mnist,
     load_frozen_mnist_classifier,
+    summarize_mnist_branch,
 )
 from generative_models.training.mnist_ddpm import (
     MNISTDDPMTrainingConfig,
@@ -42,6 +42,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--samples-per-class", type=int, default=8)
     parser.add_argument("--source-seed", type=int, default=100)
     parser.add_argument("--ancestral-seed", type=int, default=101)
+    parser.add_argument(
+        "--branch", choices=("conditional", "null"), default="conditional"
+    )
     parser.add_argument("--device", default="cpu")
     args = parser.parse_args()
     if args.samples_per_class < 1:
@@ -59,6 +62,7 @@ def save_grid(
     path: Path,
     *,
     samples_per_class: int,
+    conditional: bool = True,
 ) -> None:
     use_clean_style()
     figure, axes = plt.subplots(
@@ -76,8 +80,10 @@ def save_grid(
             axes[label, column].set_yticks([])
             for spine in axes[label, column].spines.values():
                 spine.set_visible(False)
-        axes[label, 0].set_ylabel(str(label), rotation=0, labelpad=10)
-    figure.tight_layout(pad=0.2)
+        if conditional:
+            axes[label, 0].set_ylabel(str(label), rotation=0, labelpad=10)
+    figure.suptitle("Conditional" if conditional else "Unconditional (null token)")
+    figure.tight_layout(pad=0.2, rect=(0, 0, 1, 0.96))
     save_figure(figure, path)
     plt.close(figure)
 
@@ -93,12 +99,24 @@ def main() -> None:
     config = MNISTDDPMTrainingConfig(**checkpoint["config"])
     if checkpoint.get("family") != "ddpm" or checkpoint.get("prediction") != "epsilon":
         raise ValueError("expected an epsilon-prediction DDPM checkpoint")
+    if args.branch == "null" and (
+        not config.use_null_condition
+        or checkpoint.get("conditioning", {}).get("dropped_examples", 0) == 0
+    ):
+        raise ValueError(
+            "null sampling requires a checkpoint trained with dropped labels"
+        )
     model = build_mnist_ddpm_model(config).to(device)
     model.load_state_dict(checkpoint["model_state_dict"])
     schedule = build_mnist_ddpm_schedule(config, device=device)
     evaluator = load_frozen_mnist_classifier(args.evaluator, device=device)
 
     labels = torch.arange(10, device=device).repeat_interleave(args.samples_per_class)
+    conditions = (
+        torch.full_like(labels, config.num_classes)
+        if args.branch == "null"
+        else labels
+    )
     source_generator = torch.Generator(device=device).manual_seed(args.source_seed)
     initial_noise = torch.randn(
         labels.shape[0],
@@ -114,15 +132,15 @@ def main() -> None:
     generated = sample_conditional_ddpm(
         model,
         schedule,
-        labels,
+        conditions,
         initial_noise,
         ancestral_generator=ancestral_generator,
     )
 
-    metrics = evaluate_generated_mnist(
+    metrics = summarize_mnist_branch(
         evaluator,
         generated.samples,
-        labels,
+        labels if args.branch == "conditional" else None,
     )
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
@@ -133,17 +151,22 @@ def main() -> None:
         generated.samples,
         grid_path,
         samples_per_class=args.samples_per_class,
+        conditional=args.branch == "conditional",
     )
     torch.save(
         {
             "samples": generated.samples.detach().cpu(),
-            "requested_labels": labels.cpu(),
+            "requested_labels": labels.cpu()
+            if args.branch == "conditional"
+            else None,
+            "conditioning_labels": conditions.cpu(),
             "initial_noise": initial_noise.cpu(),
         },
         samples_path,
     )
     summary = {
         "family": "ddpm",
+        "branch": args.branch,
         "prediction": "epsilon",
         "device": args.device,
         "torch_version": str(torch.__version__),
@@ -155,22 +178,14 @@ def main() -> None:
         "num_timesteps": schedule.num_timesteps,
         "nfe": schedule.num_timesteps,
         "num_samples": labels.shape[0],
-        "metrics": {
-            "conditional_accuracy": metrics.conditional_accuracy,
-            "requested_class_confidence": metrics.requested_class_confidence,
-            "out_of_range_fraction": metrics.out_of_range_fraction,
-            "confusion_matrix": metrics.confusion_matrix.tolist(),
-        },
+        "metrics": metrics,
         "artifacts": {
             "grid": str(grid_path),
             "samples": str(samples_path),
         },
     }
     summary_path.write_text(json.dumps(summary, indent=2) + "\n")
-    print(
-        f"conditional_accuracy={metrics.conditional_accuracy:.4f} "
-        f"confidence={metrics.requested_class_confidence:.4f}"
-    )
+    print(json.dumps({"branch": args.branch, "metrics": metrics}, indent=2))
 
 
 if __name__ == "__main__":
