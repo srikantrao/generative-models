@@ -5,6 +5,7 @@ from dataclasses import dataclass
 import torch
 from torch.utils.data import DataLoader
 
+from generative_models.conditioning import drop_conditions
 from generative_models.data.mnist import load_mnist_split
 from generative_models.diffusion.conditional import conditional_epsilon_loss
 from generative_models.diffusion.schedules import (
@@ -23,6 +24,9 @@ class MNISTDDPMTrainingConfig:
     training_seed: int = 42
     data_seed: int = 43
     path_seed: int = 44
+    condition_seed: int = 45
+    use_null_condition: bool = False
+    condition_dropout: float = 0.0
     batch_size: int = 256
     num_workers: int = 0
     num_steps: int = 30_000
@@ -44,6 +48,8 @@ class MNISTDDPMTrainingResult:
     model: MNISTUNet
     schedule: DiffusionSchedule
     losses: list[float]
+    dropped_conditions: int
+    seen_conditions: int
 
 
 def build_mnist_ddpm_model(config: MNISTDDPMTrainingConfig) -> MNISTUNet:
@@ -51,6 +57,7 @@ def build_mnist_ddpm_model(config: MNISTDDPMTrainingConfig) -> MNISTUNet:
         base_channels=config.base_channels,
         time_embedding_dim=config.time_embedding_dim,
         num_classes=config.num_classes,
+        use_null_condition=config.use_null_condition,
         num_groups=config.num_groups,
         dropout=config.dropout,
     )
@@ -75,14 +82,7 @@ def train_mnist_conditional_ddpm(
     *,
     device: torch.device | str,
 ) -> MNISTDDPMTrainingResult:
-    if config.num_steps < 1 or config.batch_size < 1 or config.log_every < 1:
-        raise ValueError("num_steps, batch_size, and log_every must be positive")
-    if config.num_timesteps < 2 or not 0 < config.beta_start <= config.beta_end < 1:
-        raise ValueError(
-            "require at least two timesteps and 0 < beta_start <= beta_end < 1"
-        )
-    if config.num_classes != 10:
-        raise ValueError("MNIST uses ten class labels")
+
     train_device = torch.device(device)
     seed_everything(config.training_seed)
 
@@ -117,6 +117,10 @@ def train_mnist_conditional_ddpm(
     )
     path_generator = torch.Generator(device=train_device).manual_seed(config.path_seed)
 
+    condition_generator = torch.Generator(device=train_device).manual_seed(config.condition_seed)
+    dropped_conditions, seen_conditions = 0, 0
+
+
     losses: list[float] = []
     batches = iter(loader)
     model.train()
@@ -131,12 +135,23 @@ def train_mnist_conditional_ddpm(
         images = images.to(train_device)
         labels = labels.to(train_device)
 
+        conditions = labels
+        if config.use_null_condition:
+            conditions, mask = drop_conditions(
+                labels=labels,
+                probability=config.condition_dropout,
+                null_label=config.num_classes,
+                generator=condition_generator
+            )
+            dropped_conditions += int(mask.sum())
+        seen_conditions += labels.numel()
+
         optimizer.zero_grad(set_to_none=True)
         output = conditional_epsilon_loss(
-            model,
-            schedule,
-            images,
-            labels,
+            model=model,
+            schedule=schedule,
+            images=images,
+            labels=conditions,
             generator=path_generator,
         )
         if not bool(torch.isfinite(output.loss)):
@@ -153,4 +168,6 @@ def train_mnist_conditional_ddpm(
         model=model,
         schedule=schedule,
         losses=losses,
+        dropped_conditions=dropped_conditions,
+        seen_conditions=seen_conditions,
     )

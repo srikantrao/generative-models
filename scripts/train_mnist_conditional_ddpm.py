@@ -51,6 +51,16 @@ def main() -> None:
     training_seconds = perf_counter() - started
     args.output_dir.mkdir(parents=True, exist_ok=True)
 
+    conditioning = {
+        "use_null_condition": config.use_null_condition,
+        "null_label": config.num_classes if config.use_null_condition else None,
+        "dropout_probability": config.condition_dropout,
+        "condition_seed": config.condition_seed,
+        "dropped_examples": result.dropped_conditions,
+        "seen_examples": result.seen_conditions,
+        "realized_dropout": result.dropped_conditions / result.seen_conditions
+    }
+
     checkpoint_path = args.output_dir / "checkpoint.pt"
     config_path = args.output_dir / "config.yaml"
     losses_path = args.output_dir / "loss.jsonl"
@@ -73,6 +83,7 @@ def main() -> None:
                 for name, tensor in result.model.state_dict().items()
             },
             "completed_steps": len(result.losses),
+            "conditioning": conditioning,
             "raw_file_sha256": mnist_raw_file_sha256(config.data_root),
         },
         checkpoint_path,
@@ -93,6 +104,7 @@ def main() -> None:
         checkpoint_sha256 = hashlib.file_digest(file, "sha256").hexdigest()
     window = min(100, len(result.losses))
     summary = {
+        "conditioning": conditioning,
         "family": "ddpm",
         "prediction": "epsilon",
         "config": asdict(config),

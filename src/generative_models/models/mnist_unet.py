@@ -51,6 +51,7 @@ class MNISTUNet(nn.Module):
         base_channels: int = 32,
         time_embedding_dim: int = 64,
         num_classes: int = 10,
+        use_null_condition: bool = False,
         num_groups: int = 8,
         dropout: float = 0.1,
     ) -> None:
@@ -61,6 +62,7 @@ class MNISTUNet(nn.Module):
         conditioning_dim = base_channels * 4
         self.conditioning_dim = conditioning_dim
         self.num_classes = num_classes
+        self.null_label = num_classes if use_null_condition else None
 
         # time embedding
         self.time_embedding = nn.Sequential(
@@ -72,7 +74,7 @@ class MNISTUNet(nn.Module):
 
         # class embedding
         self.class_embedding = nn.Embedding(
-            num_classes,
+            num_classes + int(use_null_condition),
             conditioning_dim
         )
 

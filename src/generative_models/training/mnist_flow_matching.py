@@ -6,6 +6,7 @@ import torch
 from torch.fft import Tensor
 from torch.utils.data import DataLoader
 
+from generative_models.conditioning import drop_conditions
 from generative_models.data.mnist import load_mnist_split
 from generative_models.flow_matching.conditional import (
     conditional_flow_matching_loss,
@@ -21,6 +22,9 @@ class MNISTFlowTrainingConfig:
     training_seed: int = 42
     data_seed: int = 43
     path_seed: int = 44
+    condition_seed: int = 45
+    use_null_condition: bool = False
+    condition_dropout: float = 0.0
     batch_size: int = 256
     num_workers: int = 0
     num_steps: int = 30_000
@@ -38,6 +42,8 @@ class MNISTFlowTrainingConfig:
 class MNISTFlowTrainingResult:
     model: MNISTUNet
     losses: list[float]
+    dropped_conditions: int
+    seen_conditions: int
 
 
 def build_mnist_flow_model(config: MNISTFlowTrainingConfig) -> MNISTUNet:
@@ -45,6 +51,7 @@ def build_mnist_flow_model(config: MNISTFlowTrainingConfig) -> MNISTUNet:
         base_channels=config.base_channels,
         time_embedding_dim=config.time_embedding_dim,
         num_classes=config.num_classes,
+        use_null_condition=config.use_null_condition,
         num_groups=config.num_groups,
         dropout=config.dropout,
     )
@@ -83,6 +90,9 @@ def train_mnist_conditional_flow(
     )
     path_generator = torch.Generator(device=train_device).manual_seed(config.path_seed)
 
+    condition_generator = torch.Generator(device=train_device).manual_seed(config.condition_seed)
+    dropped_conditions, seen_conditions = 0, 0
+
     losses: list[float] = []
     batches = iter(loader)
     model.train()
@@ -97,9 +107,23 @@ def train_mnist_conditional_flow(
         images: Tensor = images.to(train_device)
         labels: Tensor = labels.to(train_device)
 
+        conditions = labels
+        if config.use_null_condition:
+            conditions, mask = drop_conditions(
+                labels=labels,
+                probability=config.condition_dropout,
+                null_label=config.num_classes,
+                generator=condition_generator,
+            )
+            dropped_conditions += int(mask.sum())
+        seen_conditions += labels.numel()
+
         optimizer.zero_grad(set_to_none=True)
         output = conditional_flow_matching_loss(
-            model, images, labels, generator=path_generator
+            model=model,
+            data=images,
+            labels=conditions,
+            generator=path_generator
         )
         output.loss.backward()
         optimizer.step()
@@ -109,4 +133,9 @@ def train_mnist_conditional_flow(
         if step == 1 or step % config.log_every == 0:
             print(f"step={step:05d} velocity_mse={loss:.4f}")
 
-    return MNISTFlowTrainingResult(model=model, losses=losses)
+    return MNISTFlowTrainingResult(
+        model=model,
+        losses=losses,
+        dropped_conditions=dropped_conditions,
+        seen_conditions=seen_conditions
+    )
